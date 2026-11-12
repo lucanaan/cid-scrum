@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { nextSprintId, type AppConfig, type Sprint } from '../model/appConfig';
-import { computeResult, daysBetween, dateKey, sprintTasks, sumPoints } from '../model/metrics';
+import { businessDays, computeResult, daysBetween, dateKey, sprintTasks, sumPoints } from '../model/metrics';
 import { useStore } from '../store';
 import { Modal } from './Modal';
 import { formatDate } from './ui';
@@ -32,13 +32,13 @@ export function StartSprintDialog({ sprint, onClose }: { sprint: Sprint; onClose
   const inSprint = sprintTasks(tasks, sprint.id);
   const unestimated = inSprint.filter((t) => t.points === undefined);
   const active = config.sprints.find((s) => s.status === 'active');
-  const today = dateKey(new Date());
 
   const plannedLength = daysBetween(sprint.start, sprint.end).length;
   const [name, setName] = useState(sprint.name);
   const [duration, setDuration] = useState(DURATIONS.includes(plannedLength) ? String(plannedLength) : 'custom');
-  const [start, setStart] = useState(sprint.start < today ? today : sprint.start);
-  const [end, setEnd] = useState(sprint.start < today ? addDays(today, plannedLength - 1) : sprint.end);
+  // Datas no passado são permitidas: dá para registrar uma sprint que já começou.
+  const [start, setStart] = useState(sprint.start);
+  const [end, setEnd] = useState(sprint.end);
   const [goal, setGoal] = useState(sprint.goal);
   const [busy, setBusy] = useState(false);
 
@@ -217,6 +217,71 @@ export function CompleteSprintDialog({ sprint, onClose }: { sprint: Sprint; onCl
             <option value="backlog">Backlog</option>
           </select>
         </label>
+      )}
+    </Modal>
+  );
+}
+
+/** Edita nome, datas e objetivo de uma sprint planejada ou ativa. */
+export function EditSprintDialog({ sprint, onClose }: { sprint: Sprint; onClose: () => void }) {
+  const { updateConfig } = useStore();
+  const [name, setName] = useState(sprint.name);
+  const [start, setStart] = useState(sprint.start);
+  const [end, setEnd] = useState(sprint.end);
+  const [goal, setGoal] = useState(sprint.goal);
+  const [busy, setBusy] = useState(false);
+  const valid = name.trim() && start && end && end >= start;
+
+  const submit = async () => {
+    setBusy(true);
+    try {
+      await updateConfig((c) => ({
+        ...c,
+        sprints: c.sprints.map((s) => (s.id === sprint.id ? { ...s, name: name.trim(), start, end, goal } : s)),
+      }));
+      onClose();
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Modal
+      title={`Editar ${sprint.name}`}
+      onClose={onClose}
+      footer={
+        <>
+          <button className="ghost" onClick={onClose}>
+            Cancelar
+          </button>
+          <button className="primary" disabled={!valid || busy} onClick={submit}>
+            {busy ? 'Salvando…' : 'Salvar'}
+          </button>
+        </>
+      }
+    >
+      <label className="field">
+        <span>Nome da sprint *</span>
+        <input value={name} onChange={(e) => setName(e.target.value)} />
+      </label>
+      <label className="field">
+        <span>Data de início *</span>
+        <input type="date" value={start} onChange={(e) => setStart(e.target.value)} />
+      </label>
+      <label className="field">
+        <span>Data de término *</span>
+        <input type="date" value={end} min={start} onChange={(e) => setEnd(e.target.value)} />
+        {start && end >= start && <small className="faint">{businessDays(start, end)} dias úteis</small>}
+      </label>
+      <label className="field">
+        <span>Objetivo da sprint</span>
+        <textarea rows={3} value={goal} onChange={(e) => setGoal(e.target.value)} />
+      </label>
+      {sprint.status === 'active' && start < sprint.start && (
+        <p className="faint">
+          Depois de salvar, clique em <strong>Atualizar</strong> para o burndown incluir as tarefas concluídas desde a nova
+          data de início.
+        </p>
       )}
     </Modal>
   );

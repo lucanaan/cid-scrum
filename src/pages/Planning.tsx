@@ -11,9 +11,9 @@ import {
   UNASSIGNED,
   velocity,
 } from '../model/metrics';
-import type { Task } from '../model/task';
+import { statusOf, type Task } from '../model/task';
 import { useStore } from '../store';
-import { newSprint, StartSprintDialog } from '../components/SprintDialogs';
+import { EditSprintDialog, newSprint, StartSprintDialog } from '../components/SprintDialogs';
 
 export function Planning() {
   const { config } = useStore();
@@ -120,7 +120,7 @@ function NewSprint({ onDone }: { onDone: (id?: number) => void }) {
 }
 
 function SprintPlan({ sprint }: { sprint: Sprint }) {
-  const { tasks, config, memberIds, userName, setTags, setAssignee } = useStore();
+  const { tasks, config, memberIds, userName, setTags, setTagsMany, setAssignee } = useStore();
   const [query, setQuery] = useState('');
   const [busyIds, setBusyIds] = useState<Set<string>>(new Set());
 
@@ -154,6 +154,20 @@ function SprintPlan({ sprint }: { sprint: Sprint }) {
   };
 
   const [starting, setStarting] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [addingDoing, setAddingDoing] = useState(false);
+  const doing = candidates.filter((t) => statusOf(t) === 'doing');
+  const addDoing = async () => {
+    setAddingDoing(true);
+    try {
+      await setTagsMany(
+        doing.map((t) => t.id),
+        { sprint: sprint.id },
+      );
+    } finally {
+      setAddingDoing(false);
+    }
+  };
 
   const target = vel ?? capacity;
 
@@ -184,6 +198,9 @@ function SprintPlan({ sprint }: { sprint: Sprint }) {
           <h2 className="grow">
             {sprint.name} <span className="faint">· {formatRange(sprint.start, sprint.end)} · {businessDays(sprint.start, sprint.end)} dias úteis</span>
           </h2>
+          <button className="ghost small" onClick={() => setEditing(true)}>
+            ✎ Editar
+          </button>
           {sprint.status === 'planned' && (
             <button
               className="primary"
@@ -196,6 +213,7 @@ function SprintPlan({ sprint }: { sprint: Sprint }) {
           )}
         </div>
         {starting && <StartSprintDialog sprint={sprint} onClose={() => setStarting(false)} />}
+        {editing && <EditSprintDialog sprint={sprint} onClose={() => setEditing(false)} />}
         {sprint.goal && <p className="muted" style={{ margin: 0 }}>Meta: {sprint.goal}</p>}
         {active && sprint.status === 'planned' && (
           <p className="faint" style={{ margin: 0 }}>
@@ -224,6 +242,11 @@ function SprintPlan({ sprint }: { sprint: Sprint }) {
             <h2 className="grow">Backlog ({candidates.length})</h2>
             <input placeholder="Buscar…" value={query} onChange={(e) => setQuery(e.target.value)} style={{ width: 160 }} />
           </div>
+          {doing.length > 0 && (
+            <button className="small" style={{ marginBottom: 10 }} disabled={addingDoing} onClick={addDoing}>
+              {addingDoing ? 'Adicionando…' : `Adicionar todas em andamento (${doing.length}) →`}
+            </button>
+          )}
           <div className="task-list scroll">
             {candidates.map((t) => (
               <TaskRow

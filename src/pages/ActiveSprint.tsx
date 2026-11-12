@@ -7,7 +7,7 @@ import type { Sprint } from '../model/appConfig';
 import { burndown, computeResult, dateKey, sprintTasks, sumPoints } from '../model/metrics';
 import { statusOf, STATUS_LABEL, type Status, type Task } from '../model/task';
 import { useStore } from '../store';
-import { CompleteSprintDialog } from '../components/SprintDialogs';
+import { CompleteSprintDialog, EditSprintDialog } from '../components/SprintDialogs';
 
 export function ActiveSprint() {
   const { config } = useStore();
@@ -27,6 +27,7 @@ const COLUMNS: Status[] = ['todo', 'doing', 'done'];
 function SprintView({ sprint }: { sprint: Sprint }) {
   const { tasks } = useStore();
   const [closing, setClosing] = useState(false);
+  const [editing, setEditing] = useState(false);
   const inSprint = sprintTasks(tasks, sprint.id);
   const result = computeResult(tasks, sprint);
   const today = dateKey(new Date());
@@ -41,9 +42,13 @@ function SprintView({ sprint }: { sprint: Sprint }) {
         <h2 className="grow">
           {sprint.name} <span className="faint">· {formatRange(sprint.start, sprint.end)}</span>
         </h2>
+        <button className="ghost" onClick={() => setEditing(true)}>
+          ✎ Editar
+        </button>
         <button onClick={() => setClosing(true)}>Concluir sprint</button>
       </div>
       {sprint.goal && <p className="muted" style={{ margin: 0 }}>Meta: {sprint.goal}</p>}
+      {editing && <EditSprintDialog sprint={sprint} onClose={() => setEditing(false)} />}
       {closing && <CompleteSprintDialog sprint={sprint} onClose={() => setClosing(false)} />}
 
       <div className="stats">
