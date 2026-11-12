@@ -61,7 +61,13 @@ export interface PlannerApi {
   listPlans(): Promise<PlannerPlan[]>;
   getPlan(planId: string): Promise<PlannerPlan>;
   listBuckets(planId: string): Promise<PlannerBucket[]>;
-  listTasks(planId: string): Promise<TaskWithDetails[]>;
+  /** Tarefas do plano, sem descrição (rápido). */
+  listTasks(planId: string): Promise<PlannerTask[]>;
+  /** Busca as descrições em lotes; `onProgress` é chamado a cada lote recebido. */
+  loadDetails(
+    taskIds: string[],
+    onProgress: (loaded: Map<string, TaskDetails>, done: number, total: number) => void,
+  ): Promise<void>;
   getTask(taskId: string): Promise<PlannerTask>;
   getDetails(taskId: string): Promise<TaskDetails>;
   getPlanDetails(planId: string): Promise<PlanDetails>;

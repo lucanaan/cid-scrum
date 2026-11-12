@@ -13,7 +13,6 @@ import {
   type TaskDetails,
   type TaskPatch,
   type PlanDetails,
-  type TaskWithDetails,
 } from './types';
 
 const STORAGE_KEY = 'planner-sprints-demo-v2';
@@ -269,9 +268,21 @@ export class MockPlannerApi implements PlannerApi {
     return BUCKETS;
   }
 
-  async listTasks(): Promise<TaskWithDetails[]> {
+  async listTasks(): Promise<PlannerTask[]> {
     await delay();
-    return this.store.tasks.map((t) => ({ ...t, details: { ...this.store.details[t.id] } }));
+    return this.store.tasks.map((t) => ({ ...t }));
+  }
+
+  /** Lotes de 5 com atraso, para o demo mostrar a faixa de progresso. */
+  async loadDetails(
+    taskIds: string[],
+    onProgress: (loaded: Map<string, TaskDetails>, done: number, total: number) => void,
+  ) {
+    for (let i = 0; i < taskIds.length; i += 5) {
+      await new Promise((r) => setTimeout(r, 250));
+      const ids = taskIds.slice(i, i + 5);
+      onProgress(new Map(ids.map((id) => [id, { ...this.store.details[id] }])), i + ids.length, taskIds.length);
+    }
   }
 
   async getTask(taskId: string) {

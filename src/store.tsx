@@ -8,6 +8,7 @@ import {
   type AppConfig,
 } from './model/appConfig';
 import { parseTags, updateTags, type Tags } from './model/tags';
+import { tasksToLoad } from './model/loading';
 import { findCategory, freeCategory, labelPatch, sprintLabelName, type Categories } from './model/sprintLabel';
 import { STATUS_PERCENT, toTask, type Status, type Task } from './model/task';
 
@@ -20,6 +21,8 @@ interface State {
   users: Record<string, GraphUser>;
   /** Nomes dos rótulos do plano (category1..category25). */
   categories: Categories;
+  /** Descrições (pontos e sprint) ainda chegando em segundo plano. */
+  detailsProgress: { done: number; total: number } | null;
   loading: boolean;
   error: string | null;
 }
@@ -75,6 +78,7 @@ const initial: State = {
   configTaskId: null,
   users: {},
   categories: {},
+  detailsProgress: null,
   loading: false,
   error: null,
 };
@@ -106,32 +110,45 @@ export function StoreProvider({ api, me, children }: { api: PlannerApi; me: Grap
     setState((s) => ({ ...s, loading: false, error: e instanceof Error ? e.message : String(e) }));
   }, []);
 
+  // Cada carregamento tem um número; resultados de um carregamento antigo (troca de plano) são ignorados.
+  const loadSeq = useRef(0);
+
   const load = useCallback(
     async (plan: PlannerPlan) => {
-      setState((s) => ({ ...s, plan, loading: true, error: null }));
+      const seq = ++loadSeq.current;
+      const current = () => seq === loadSeq.current;
+      setState((s) => ({ ...s, plan, loading: true, error: null, detailsProgress: null }));
       try {
         const [buckets, raw, planDetails] = await Promise.all([
           api.listBuckets(plan.id),
           api.listTasks(plan.id),
           api.getPlanDetails(plan.id),
         ]);
-        let cfgRaw = raw.find((t) => t.title === CONFIG_TASK_TITLE);
-        let config = cfgRaw ? parseConfig(cfgRaw.details.description) : emptyConfig();
-        if (!cfgRaw) {
+        const cfgTask = raw.find((t) => t.title === CONFIG_TASK_TITLE);
+        let configTaskId: string;
+        let config: AppConfig;
+        if (cfgTask) {
+          configTaskId = cfgTask.id;
+          config = parseConfig((await api.getDetails(cfgTask.id)).description);
+        } else {
           if (!buckets.length) throw new Error('O plano não tem nenhum bucket. Crie um no Planner primeiro.');
+          config = emptyConfig();
           const created = await api.createTask(plan.id, buckets[0].id, CONFIG_TASK_TITLE);
           const details = await api.getDetails(created.id);
           await api.updateDescription(created.id, details.etag, serializeConfig(config));
           // Concluída, ela fica escondida em "Tarefas concluídas" no quadro do Planner.
           await api.updateTask(created.id, created['@odata.etag'], { percentComplete: 100 });
-          cfgRaw = { ...created, details };
-          config = emptyConfig();
+          configTaskId = created.id;
         }
-        const tasks = raw.filter((t) => t.id !== cfgRaw!.id).map(toTask);
-        const ids = new Set<string>(Object.keys(config.members));
-        tasks.forEach((t) => t.assignees.forEach((a) => ids.add(a)));
-        ids.add(me.id);
-        const users = Object.fromEntries((await api.getUsers([...ids])).map((u) => [u.id, u]));
+        if (!current()) return;
+
+        // Só abertas e concluídas das sprints atuais; as descrições chegam depois.
+        const selected = tasksToLoad(
+          raw.filter((t) => t.id !== configTaskId),
+          config,
+          planDetails.categoryDescriptions,
+        );
+        const tasks = selected.map((t) => toTask({ ...t, details: { description: '', etag: '' } }));
         try {
           localStorage.setItem(PLAN_KEY, plan.id);
         } catch {
@@ -143,14 +160,38 @@ export function StoreProvider({ api, me, children }: { api: PlannerApi; me: Grap
           buckets,
           tasks,
           config,
-          configTaskId: cfgRaw.id,
-          users,
+          configTaskId,
+          users: {},
           categories: planDetails.categoryDescriptions,
+          detailsProgress: tasks.length ? { done: 0, total: tasks.length } : null,
           loading: false,
           error: null,
         });
+
+        const ids = new Set<string>(Object.keys(config.members));
+        tasks.forEach((t) => t.assignees.forEach((a) => ids.add(a)));
+        ids.add(me.id);
+        api
+          .getUsers([...ids])
+          .then((list) => current() && setState((s) => ({ ...s, users: Object.fromEntries(list.map((u) => [u.id, u])) })))
+          .catch(fail);
+
+        await api.loadDetails(
+          tasks.map((t) => t.id),
+          (loaded, done, total) => {
+            if (!current()) return;
+            const apply = (t: Task) => {
+              const d = loaded.get(t.id);
+              // Não sobrescreve uma tarefa que a pessoa já editou enquanto carregava.
+              return d && !t.detailsEtag ? toTask({ ...rawOf(t), details: d }) : t;
+            };
+            tasksRef.current = tasksRef.current.map(apply);
+            setState((s) => ({ ...s, tasks: s.tasks.map(apply), detailsProgress: { done, total } }));
+          },
+        );
+        if (current()) setState((s) => ({ ...s, detailsProgress: null }));
       } catch (e) {
-        fail(e);
+        if (current()) fail(e);
       }
     },
     [api, me.id, fail],
@@ -358,6 +399,7 @@ export function StoreProvider({ api, me, children }: { api: PlannerApi; me: Grap
       allMemberIds,
       openPlan: load,
       closePlan: () => {
+        loadSeq.current++;
         try {
           localStorage.removeItem(PLAN_KEY);
         } catch {

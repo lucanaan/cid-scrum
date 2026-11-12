@@ -32,7 +32,7 @@ function useHashTab() {
 }
 
 export function App() {
-  const { plan, loading, error, clearError } = useStore();
+  const { plan, loading, error, clearError, detailsProgress } = useStore();
   if (!plan) return <PlanPicker />;
   return (
     <>
@@ -45,6 +45,17 @@ export function App() {
             <button className="small" onClick={clearError}>
               Fechar
             </button>
+          </div>
+        )}
+        {detailsProgress && (
+          <div className="banner" role="status">
+            <span className="grow">
+              Carregando estimativas… {detailsProgress.done} de {detailsProgress.total} tarefas. Pontos e sprints aparecem
+              conforme chegam.
+            </span>
+            <span className="progress" aria-hidden>
+              <span style={{ width: `${(detailsProgress.done / detailsProgress.total) * 100}%` }} />
+            </span>
           </div>
         )}
         {loading ? <div className="card empty-state">Carregando tarefas do Planner…</div> : <CurrentTab />}

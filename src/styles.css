@@ -414,3 +414,5 @@ details summary { cursor: pointer; color: var(--text-2); }
 .alert { display: flex; gap: 10px; align-items: flex-start; }
 .alert > span:first-child { color: var(--warning-ink); }
 .sprint-chip { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.progress { width: 160px; height: 6px; border-radius: 999px; background: var(--surface); overflow: hidden; }
+.progress > span { display: block; height: 100%; background: var(--accent); transition: width 0.2s; }

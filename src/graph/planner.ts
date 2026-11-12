@@ -9,7 +9,6 @@ import {
   type TaskDetails,
   type TaskPatch,
   type PlanDetails,
-  type TaskWithDetails,
 } from './types';
 
 const GRAPH = 'https://graph.microsoft.com/v1.0';
@@ -62,30 +61,56 @@ async function getAll<T>(path: string): Promise<T[]> {
 interface BatchResponse {
   id: string;
   status: number;
+  headers?: Record<string, string>;
   body: unknown;
 }
 
-/** GETs em lote ($batch aceita até 20 por chamada). Repete os itens que voltarem 429. */
-async function batchGet(urls: string[]): Promise<Map<string, unknown>> {
+const PARALLEL_BATCHES = 3;
+
+/**
+ * GETs em lote ($batch aceita até 20 por chamada), com até 3 lotes ao mesmo tempo.
+ * Itens que voltam 429/503 são repetidos depois do Retry-After pedido pelo servidor.
+ * `onChunk` recebe os resultados de cada lote assim que chegam.
+ */
+async function batchGet(urls: string[], onChunk?: (results: Map<string, unknown>) => void): Promise<Map<string, unknown>> {
   const results = new Map<string, unknown>();
   let pending = urls.map((url, i) => ({ id: String(i), url }));
-  for (let attempt = 0; pending.length && attempt < 5; attempt++) {
+  for (let attempt = 0; pending.length && attempt < 6; attempt++) {
     const retry: typeof pending = [];
-    for (let i = 0; i < pending.length; i += 20) {
-      const chunk = pending.slice(i, i + 20);
+    let wait = 0;
+    const chunks: (typeof pending)[] = [];
+    for (let i = 0; i < pending.length; i += 20) chunks.push(pending.slice(i, i + 20));
+
+    const runChunk = async (chunk: typeof pending) => {
       const res = await graphFetch('/$batch', {
         method: 'POST',
         body: JSON.stringify({ requests: chunk.map((r) => ({ id: r.id, method: 'GET', url: r.url })) }),
       });
       const { responses } = (await res.json()) as { responses: BatchResponse[] };
+      const got = new Map<string, unknown>();
       for (const r of responses) {
         const req = chunk.find((c) => c.id === r.id)!;
-        if (r.status === 429 || r.status === 503) retry.push(req);
-        else if (r.status < 300) results.set(req.url, r.body);
+        if (r.status === 429 || r.status === 503) {
+          retry.push(req);
+          wait = Math.max(wait, Number(r.headers?.['Retry-After'] ?? r.headers?.['retry-after']) || 2 ** attempt);
+        } else if (r.status < 300) {
+          got.set(req.url, r.body);
+          results.set(req.url, r.body);
+        }
       }
-    }
+      if (got.size) onChunk?.(got);
+    };
+
+    // Fila simples: PARALLEL_BATCHES lotes em andamento por vez.
+    let next = 0;
+    await Promise.all(
+      Array.from({ length: Math.min(PARALLEL_BATCHES, chunks.length) }, async () => {
+        while (next < chunks.length) await runChunk(chunks[next++]);
+      }),
+    );
+
     pending = retry;
-    if (pending.length) await sleep(2000 * (attempt + 1));
+    if (pending.length) await sleep(Math.min(wait, 30) * 1000);
   }
   return results;
 }
@@ -114,14 +139,24 @@ export class GraphPlannerApi implements PlannerApi {
     return getAll(`/planner/plans/${encodeURIComponent(planId)}/buckets`);
   }
 
-  async listTasks(planId: string): Promise<TaskWithDetails[]> {
-    const tasks = await getAll<PlannerTask>(`/planner/plans/${encodeURIComponent(planId)}/tasks`);
-    const urls = tasks.map((t) => `/planner/tasks/${t.id}/details`);
-    const details = await batchGet(urls);
-    return tasks.map((t, i) => {
-      const body = details.get(urls[i]) as { description?: string; '@odata.etag': string } | undefined;
-      // Sem detalhes (falha no lote) a tarefa entra sem etag; gravações vão buscar de novo.
-      return { ...t, details: body ? toDetails(body) : { description: '', etag: '' } };
+  listTasks(planId: string): Promise<PlannerTask[]> {
+    return getAll<PlannerTask>(`/planner/plans/${encodeURIComponent(planId)}/tasks`);
+  }
+
+  async loadDetails(
+    taskIds: string[],
+    onProgress: (loaded: Map<string, TaskDetails>, done: number, total: number) => void,
+  ): Promise<void> {
+    const url = (id: string) => `/planner/tasks/${id}/details`;
+    const idByUrl = new Map(taskIds.map((id) => [url(id), id]));
+    let done = 0;
+    await batchGet([...idByUrl.keys()], (chunk) => {
+      const loaded = new Map<string, TaskDetails>();
+      for (const [u, body] of chunk) {
+        loaded.set(idByUrl.get(u)!, toDetails(body as { description?: string; '@odata.etag': string }));
+      }
+      done += loaded.size;
+      onProgress(loaded, done, taskIds.length);
     });
   }
 
