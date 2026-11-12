@@ -1,4 +1,4 @@
-# Sprints do Planner
+# CID Scrum
 
 Complemento ao **Microsoft Planner Basic** para a equipe:
 
@@ -33,10 +33,10 @@ Abra http://localhost:5173/?demo=1. Enquanto o Client ID não estiver configurad
 
 ## Publicar no GitHub Pages
 
-1. Crie um repositório chamado `planner-sprints` no GitHub e envie este código para a branch `main`.
+1. Crie um repositório chamado `cid-scrum` no GitHub e envie este código para a branch `main`.
 2. Em **Settings → Pages → Build and deployment**, escolha **GitHub Actions**.
 3. Em **Settings → Secrets and variables → Actions → Variables**, crie `VITE_CLIENT_ID` e `VITE_TENANT_ID`.
-4. Cada push na `main` publica o app em `https://<usuario>.github.io/planner-sprints/`. Essa URL precisa estar no registro do Entra (está no pedido à DTI).
+4. Cada push na `main` publica o app em `https://lucanaan.github.io/cid-scrum/`. Essa URL precisa estar no registro do Entra (está no pedido à DTI).
 
 ## Desenvolvimento
 

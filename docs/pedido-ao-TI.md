@@ -14,10 +14,10 @@ Caminho: **entra.microsoft.com → Identidade → Aplicativos → Registros de a
 
 | Campo | Valor |
 |---|---|
-| Nome | `Sprints do Planner` (ou o padrão de nomes de vocês) |
+| Nome | `CID Scrum` (ou o padrão de nomes de vocês) |
 | Tipos de conta com suporte | **Contas somente neste diretório organizacional** (locatário único) |
 | URI de redirecionamento: plataforma | **Aplicativo de página única (SPA)** |
-| URI de redirecionamento: URL | `https://<USUARIO-GITHUB>.github.io/planner-sprints/` |
+| URI de redirecionamento: URL | `https://lucanaan.github.io/cid-scrum/` |
 
 Depois de criar, em **Autenticação → Aplicativo de página única**, adicionar também a URL de desenvolvimento:
 

@@ -47,7 +47,7 @@ function Root() {
   return (
     <div className="center-page">
       <section className="card stack" style={{ gap: 14 }}>
-        <h1>Sprints do Planner</h1>
+        <h1>CID Scrum</h1>
         {boot.state === 'loading' && <p className="muted">Carregando…</p>}
         {boot.state === 'login' && (
           <>

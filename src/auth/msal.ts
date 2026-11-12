@@ -8,7 +8,7 @@ import { CLIENT_ID, GRAPH_SCOPES, TENANT_ID } from '../config';
 let pca: PublicClientApplication | null = null;
 
 function redirectUri(): string {
-  // Raiz do app (ex.: https://usuario.github.io/planner-sprints/), igual à registrada no Entra.
+  // Raiz do app (ex.: https://lucanaan.github.io/cid-scrum/), igual à registrada no Entra.
   return new URL(import.meta.env.BASE_URL, location.origin).href;
 }
 
