@@ -8,7 +8,6 @@ import {
   type PlannerTask,
   type TaskDetails,
   type TaskPatch,
-  type PlanDetails,
 } from './types';
 
 const GRAPH = 'https://graph.microsoft.com/v1.0';
@@ -158,28 +157,6 @@ export class GraphPlannerApi implements PlannerApi {
       done += loaded.size;
       onProgress(loaded, done, taskIds.length);
     });
-  }
-
-  getTask(taskId: string): Promise<PlannerTask> {
-    return getJson(`/planner/tasks/${taskId}`);
-  }
-
-  async getPlanDetails(planId: string): Promise<PlanDetails> {
-    const body = await getJson<{ categoryDescriptions?: Record<string, string | null>; '@odata.etag': string }>(
-      `/planner/plans/${encodeURIComponent(planId)}/details`,
-    );
-    return { categoryDescriptions: body.categoryDescriptions ?? {}, etag: body['@odata.etag'] };
-  }
-
-  async updateCategories(planId: string, etag: string, names: Record<string, string>): Promise<PlanDetails> {
-    const res = await graphFetch(`/planner/plans/${encodeURIComponent(planId)}/details`, {
-      method: 'PATCH',
-      headers: { 'If-Match': etag, Prefer: 'return=representation' },
-      body: JSON.stringify({ categoryDescriptions: names }),
-    });
-    if (res.status === 204) return this.getPlanDetails(planId);
-    const body = await res.json();
-    return { categoryDescriptions: body.categoryDescriptions ?? {}, etag: body['@odata.etag'] };
   }
 
   async getDetails(taskId: string): Promise<TaskDetails> {

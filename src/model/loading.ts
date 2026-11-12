@@ -2,19 +2,17 @@
 // o histórico das sprints encerradas já está gravado no config (sprint.result).
 import type { PlannerTask } from '../graph/types';
 import type { AppConfig } from './appConfig';
-import { findCategory, sprintLabelName, type Categories } from './sprintLabel';
+import { dateKey } from './metrics';
 
-export function tasksToLoad(raw: PlannerTask[], config: AppConfig, categories: Categories): PlannerTask[] {
-  // Rótulos das sprints que ainda importam (ativa e planejadas).
-  const currentLabels = new Set(
-    config.sprints
-      .filter((s) => s.status !== 'closed')
-      .map((s) => findCategory(categories, sprintLabelName(s.id)))
-      .filter((k): k is string => !!k),
-  );
+/**
+ * Abertas sempre entram. Concluídas só entram se foram concluídas a partir do início
+ * da sprint ativa/planejada mais antiga (são as que contam no burndown da sprint atual).
+ */
+export function tasksToLoad(raw: PlannerTask[], config: AppConfig): PlannerTask[] {
+  const starts = config.sprints.filter((s) => s.status !== 'closed').map((s) => s.start);
+  const since = starts.length ? starts.reduce((a, b) => (a < b ? a : b)) : null;
   return raw.filter(
     (t) =>
-      t.percentComplete < 100 ||
-      Object.entries(t.appliedCategories ?? {}).some(([k, on]) => on && currentLabels.has(k)),
+      t.percentComplete < 100 || (since !== null && !!t.completedDateTime && dateKey(t.completedDateTime) >= since),
   );
 }

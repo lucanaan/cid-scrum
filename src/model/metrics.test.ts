@@ -17,7 +17,6 @@ function task(p: Partial<Task>): Task {
     title: 't',
     bucketId: 'b',
     assignees: [],
-    categories: [],
     percentComplete: 0,
     createdAt: '2026-11-01T12:00:00Z',
     completedAt: null,

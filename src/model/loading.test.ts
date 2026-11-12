@@ -3,7 +3,7 @@ import type { PlannerTask } from '../graph/types';
 import { emptyConfig, type Sprint } from './appConfig';
 import { tasksToLoad } from './loading';
 
-function raw(id: string, percentComplete: number, labels: string[] = []): PlannerTask {
+function raw(id: string, percentComplete: number, completed: string | null = null): PlannerTask {
   return {
     id,
     planId: 'p',
@@ -11,48 +11,44 @@ function raw(id: string, percentComplete: number, labels: string[] = []): Planne
     title: id,
     percentComplete,
     createdDateTime: '',
-    completedDateTime: null,
+    completedDateTime: completed,
     dueDateTime: null,
     orderHint: '',
     assignments: {},
-    appliedCategories: Object.fromEntries(labels.map((l) => [l, true])),
     '@odata.etag': '',
   };
 }
 
-const sprint = (id: number, status: Sprint['status']): Sprint => ({
+const sprint = (id: number, start: string, status: Sprint['status']): Sprint => ({
   id,
   name: `Sprint ${id}`,
-  start: '2026-11-02',
-  end: '2026-11-15',
+  start,
+  end: start,
   goal: '',
   status,
   absences: {},
 });
 
 describe('tasksToLoad', () => {
-  const categories = { category1: 'Urgente', category2: 'SPRINT-1', category3: 'SPRINT-2', category4: 'SPRINT-3' };
-  const config = { ...emptyConfig(), sprints: [sprint(1, 'closed'), sprint(2, 'active'), sprint(3, 'planned')] };
-
-  it('carrega abertas e só as concluídas das sprints atuais', () => {
+  it('carrega abertas e só as concluídas desde o início da sprint atual', () => {
+    const config = {
+      ...emptyConfig(),
+      sprints: [sprint(1, '2026-10-19', 'closed'), sprint(2, '2026-11-02', 'active'), sprint(3, '2026-11-16', 'planned')],
+    };
     const ids = tasksToLoad(
       [
         raw('aberta', 0),
-        raw('andamento', 50, ['category2']),
-        raw('concluida-antiga', 100),
-        raw('concluida-sprint-encerrada', 100, ['category2']),
-        raw('concluida-sprint-ativa', 100, ['category3', 'category1']),
-        raw('concluida-sprint-planejada', 100, ['category4']),
-        raw('concluida-outro-rotulo', 100, ['category1']),
+        raw('andamento', 50),
+        raw('concluida-antiga', 100, '2026-10-20T15:00:00Z'),
+        raw('concluida-na-sprint', 100, '2026-11-04T15:00:00Z'),
       ],
       config,
-      categories,
     ).map((t) => t.id);
-    expect(ids).toEqual(['aberta', 'andamento', 'concluida-sprint-ativa', 'concluida-sprint-planejada']);
+    expect(ids).toEqual(['aberta', 'andamento', 'concluida-na-sprint']);
   });
 
   it('no primeiro uso nenhuma concluída entra', () => {
-    const ids = tasksToLoad([raw('a', 0), raw('b', 100, ['category3'])], emptyConfig(), categories).map((t) => t.id);
+    const ids = tasksToLoad([raw('a', 0), raw('b', 100, '2026-11-04T15:00:00Z')], emptyConfig()).map((t) => t.id);
     expect(ids).toEqual(['a']);
   });
 });

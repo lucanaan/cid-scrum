@@ -17,7 +17,6 @@ Tudo fica gravado no próprio Planner: não há servidor nem banco de dados.
 | O quê | Onde fica |
 |---|---|
 | Pontos e sprint da tarefa | Primeira linha da descrição: `[pts:5] [sprint:12]` |
-| Rótulo visível no Planner | Rótulo `SPRINT-12`, criado num dos 25 rótulos livres do plano e trocado quando a tarefa muda de sprint |
 | Sprints, capacidade e histórico | Tarefa concluída `⚙ Config Sprints (não apague)` no plano |
 
 ## Testar sem conta (modo demonstração)

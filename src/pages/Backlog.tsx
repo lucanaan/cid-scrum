@@ -4,7 +4,6 @@ import { sumPoints } from '../model/metrics';
 import { POKER_VALUES } from '../model/tags';
 import { statusOf, STATUS_LABEL, type Task } from '../model/task';
 import { useStore } from '../store';
-import { sprintLabelName } from '../model/sprintLabel';
 
 const ESTIMATE_OPTIONS = POKER_VALUES.filter((v) => /^\d+$/.test(v));
 
@@ -135,9 +134,7 @@ export function Backlog() {
                   <td className="muted">{STATUS_LABEL[statusOf(t)]}</td>
                   <td>
                     {t.sprint !== undefined ? (
-                      <span className="chip sprint-chip" title={sprintName(t.sprint)}>
-                        {sprintLabelName(t.sprint)}
-                      </span>
+                      <span className="chip sprint-chip">{sprintName(t.sprint) ?? `Sprint ${t.sprint}`}</span>
                     ) : (
                       <span className="faint">—</span>
                     )}

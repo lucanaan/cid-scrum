@@ -12,10 +12,9 @@ import {
   type PlannerTask,
   type TaskDetails,
   type TaskPatch,
-  type PlanDetails,
 } from './types';
 
-const STORAGE_KEY = 'planner-sprints-demo-v2';
+const STORAGE_KEY = 'planner-sprints-demo-v3';
 const PLAN: PlannerPlan = { id: 'demo-plan', title: 'Equipe de Produto (demo)' };
 
 const USERS: GraphUser[] = [
@@ -51,7 +50,6 @@ const TITLES = [
 ];
 
 interface Store {
-  planDetails: PlanDetails;
   tasks: PlannerTask[];
   details: Record<string, TaskDetails>;
   etagSeq: number;
@@ -74,7 +72,6 @@ function seed(): Store {
   const rand = rng(42);
   const pick = <T,>(arr: readonly T[]) => arr[Math.floor(rand() * arr.length)];
   const store: Store = {
-    planDetails: { categoryDescriptions: { category1: 'Urgente', category2: 'Cliente' }, etag: '' },
     tasks: [],
     details: {},
     etagSeq: 1,
@@ -139,22 +136,12 @@ function seed(): Store {
     };
   });
 
-  // Rótulos SPRINT-N, como o app aplicaria ao mover as tarefas.
-  sprints.forEach((s, i) => (store.planDetails.categoryDescriptions[`category${i + 3}`] = `SPRINT-${s.id}`));
-  store.planDetails.etag = etag();
-  for (const t of store.tasks) {
-    const { tags } = parseTags(store.details[t.id].description);
-    if (tags.sprint) t.appliedCategories = { [`category${tags.sprint + 2}`]: true };
-    if (rand() < 0.1) t.appliedCategories = { ...t.appliedCategories, category1: true };
-  }
-
-  // Tarefas não concluídas das sprints encerradas voltaram para o backlog, sem rótulo de sprint.
+  // Tarefas não concluídas das sprints encerradas voltaram para o backlog.
   for (const t of store.tasks) {
     const { tags } = parseTags(store.details[t.id].description);
     const s = sprints.find((x) => x.id === tags.sprint);
     if (s?.status === 'closed' && t.percentComplete < 100) {
       store.details[t.id].description = updateTags(store.details[t.id].description, { sprint: undefined });
-      t.appliedCategories = {};
     }
   }
 
@@ -285,25 +272,6 @@ export class MockPlannerApi implements PlannerApi {
     }
   }
 
-  async getTask(taskId: string) {
-    await delay();
-    return { ...this.store.tasks.find((t) => t.id === taskId)! };
-  }
-
-  async getPlanDetails() {
-    await delay();
-    return structuredClone(this.store.planDetails);
-  }
-
-  async updateCategories(_planId: string, etag: string, names: Record<string, string>) {
-    await delay();
-    if (this.store.planDetails.etag !== etag) throw new ConflictError();
-    Object.assign(this.store.planDetails.categoryDescriptions, names);
-    this.store.planDetails.etag = this.etag();
-    this.save();
-    return structuredClone(this.store.planDetails);
-  }
-
   async getDetails(taskId: string) {
     await delay();
     return { ...this.store.details[taskId] };
@@ -325,9 +293,6 @@ export class MockPlannerApi implements PlannerApi {
     if (patch.percentComplete !== undefined) {
       t.percentComplete = patch.percentComplete;
       t.completedDateTime = patch.percentComplete === 100 ? new Date().toISOString() : null;
-    }
-    for (const [k, on] of Object.entries(patch.appliedCategories ?? {})) {
-      t.appliedCategories = { ...t.appliedCategories, [k]: on };
     }
     for (const [id, a] of Object.entries(patch.assignments ?? {})) {
       if (a) t.assignments = { ...t.assignments, [id]: a };
