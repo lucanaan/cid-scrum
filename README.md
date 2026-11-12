@@ -23,20 +23,17 @@ npm install
 npm run dev
 ```
 
-Abra http://localhost:5173/?demo=1. Enquanto o Client ID não estiver configurado, o app abre sempre no modo demonstração.
+Abra http://localhost:5173/?demo=1. Sem o `?demo=1`, o app pede login com a conta Microsoft.
 
 ## Conectar ao Planner
 
-1. Envie [`docs/pedido-ao-TI.md`](docs/pedido-ao-TI.md) para a DTI. Ela cria o registro no Entra ID e devolve o **Client ID** e o **Tenant ID**.
-2. Para rodar localmente, copie `.env.example` para `.env.local` e preencha os dois IDs.
-3. Para publicar, siga as instruções da seção abaixo.
+O registro no Entra ID foi criado pela DTI (veja [`docs/pedido-ao-TI.md`](docs/pedido-ao-TI.md)). O **Client ID** e o **Tenant ID** ficam em [`.env`](.env); não são segredos.
 
 ## Publicar no GitHub Pages
 
 1. Crie um repositório chamado `cid-scrum` no GitHub e envie este código para a branch `main`.
 2. Em **Settings → Pages → Build and deployment**, escolha **GitHub Actions**.
-3. Em **Settings → Secrets and variables → Actions → Variables**, crie `VITE_CLIENT_ID` e `VITE_TENANT_ID`.
-4. Cada push na `main` publica o app em `https://lucanaan.github.io/cid-scrum/`. Essa URL precisa estar no registro do Entra (está no pedido à DTI).
+3. Cada push na `main` publica o app em `https://lucanaan.github.io/cid-scrum/`. Essa URL precisa estar no registro do Entra (está no pedido à DTI).
 
 ## Desenvolvimento
 

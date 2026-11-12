@@ -28,9 +28,6 @@ jobs:
       - run: npm run build
         env:
           VITE_BASE: /${{ github.event.repository.name }}/
-          # Settings → Secrets and variables → Actions → Variables
-          VITE_CLIENT_ID: ${{ vars.VITE_CLIENT_ID }}
-          VITE_TENANT_ID: ${{ vars.VITE_TENANT_ID }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
