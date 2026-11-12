@@ -27,7 +27,15 @@ export interface PlannerTask {
   dueDateTime: string | null;
   orderHint: string;
   assignments: Record<string, unknown>;
+  /** Rótulos aplicados: { category3: true } */
+  appliedCategories?: Record<string, boolean>;
   '@odata.etag': string;
+}
+
+/** Nomes dos 25 rótulos do plano (category1..category25). */
+export interface PlanDetails {
+  categoryDescriptions: Record<string, string | null>;
+  etag: string;
 }
 
 export interface TaskDetails {
@@ -43,6 +51,7 @@ export interface TaskPatch {
   percentComplete?: number;
   /** userId -> atribuição (adicionar) ou null (remover). */
   assignments?: Record<string, { '@odata.type': string; orderHint: string } | null>;
+  appliedCategories?: Record<string, boolean>;
 }
 
 /** Interface comum à Graph real e ao modo demonstração. */
@@ -53,7 +62,11 @@ export interface PlannerApi {
   getPlan(planId: string): Promise<PlannerPlan>;
   listBuckets(planId: string): Promise<PlannerBucket[]>;
   listTasks(planId: string): Promise<TaskWithDetails[]>;
+  getTask(taskId: string): Promise<PlannerTask>;
   getDetails(taskId: string): Promise<TaskDetails>;
+  getPlanDetails(planId: string): Promise<PlanDetails>;
+  /** Renomeia rótulos do plano. Lança ConflictError (412) se o etag estiver desatualizado. */
+  updateCategories(planId: string, etag: string, names: Record<string, string>): Promise<PlanDetails>;
   /** Grava a descrição. Lança ConflictError (412) se o etag estiver desatualizado. */
   updateDescription(taskId: string, etag: string, description: string): Promise<TaskDetails>;
   updateTask(taskId: string, etag: string, patch: TaskPatch): Promise<PlannerTask>;

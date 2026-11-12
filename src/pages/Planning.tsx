@@ -3,7 +3,6 @@ import { Assignees, LoadBar, Points, Stat, formatRange } from '../components/ui'
 import { nextSprintId, type Sprint } from '../model/appConfig';
 import {
   businessDays,
-  dateKey,
   memberCapacity,
   pointsByPerson,
   sprintTasks,
@@ -14,17 +13,7 @@ import {
 } from '../model/metrics';
 import type { Task } from '../model/task';
 import { useStore } from '../store';
-
-function addDays(key: string, n: number): string {
-  const [y, m, d] = key.split('-').map(Number);
-  return dateKey(new Date(y, m - 1, d + n));
-}
-
-function nextMonday(): string {
-  const d = new Date();
-  d.setDate(d.getDate() + ((8 - d.getDay()) % 7 || 7));
-  return dateKey(d);
-}
+import { newSprint, StartSprintDialog } from '../components/SprintDialogs';
 
 export function Planning() {
   const { config } = useStore();
@@ -72,12 +61,10 @@ export function Planning() {
 
 function NewSprint({ onDone }: { onDone: (id?: number) => void }) {
   const { config, updateConfig } = useStore();
-  const last = [...config.sprints].sort((a, b) => b.end.localeCompare(a.end))[0];
-  const id = nextSprintId(config);
-  const defaultStart = last ? addDays(last.end, 1) : nextMonday();
-  const [name, setName] = useState(`Sprint ${id}`);
-  const [start, setStart] = useState(defaultStart);
-  const [end, setEnd] = useState(addDays(defaultStart, 13));
+  const suggested = newSprint(config);
+  const [name, setName] = useState(suggested.name);
+  const [start, setStart] = useState(suggested.start);
+  const [end, setEnd] = useState(suggested.end);
   const [goal, setGoal] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -129,7 +116,7 @@ function NewSprint({ onDone }: { onDone: (id?: number) => void }) {
 }
 
 function SprintPlan({ sprint }: { sprint: Sprint }) {
-  const { tasks, config, memberIds, userName, setTags, updateConfig, setAssignee } = useStore();
+  const { tasks, config, memberIds, userName, setTags, setAssignee } = useStore();
   const [query, setQuery] = useState('');
   const [busyIds, setBusyIds] = useState<Set<string>>(new Set());
 
@@ -162,11 +149,7 @@ function SprintPlan({ sprint }: { sprint: Sprint }) {
     }
   };
 
-  const start = () =>
-    updateConfig((c) => ({
-      ...c,
-      sprints: c.sprints.map((s) => (s.id === sprint.id ? { ...s, status: 'active', committed: total } : s)),
-    }));
+  const [starting, setStarting] = useState(false);
 
   const target = vel ?? capacity;
 
@@ -202,16 +185,17 @@ function SprintPlan({ sprint }: { sprint: Sprint }) {
               className="primary"
               disabled={!!active || inSprint.length === 0}
               title={active ? `Encerre a ${active.name} antes de iniciar outra` : undefined}
-              onClick={start}
+              onClick={() => setStarting(true)}
             >
               Iniciar sprint
             </button>
           )}
         </div>
+        {starting && <StartSprintDialog sprint={sprint} onClose={() => setStarting(false)} />}
         {sprint.goal && <p className="muted" style={{ margin: 0 }}>Meta: {sprint.goal}</p>}
         {active && sprint.status === 'planned' && (
           <p className="faint" style={{ margin: 0 }}>
-            A {active.name} ainda está ativa. Encerre-a na aba Sprint Ativa para iniciar esta.
+            A {active.name} ainda está ativa. Conclua-a na aba Sprint ativa para iniciar esta.
           </p>
         )}
 

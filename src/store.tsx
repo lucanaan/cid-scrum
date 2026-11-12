@@ -8,6 +8,7 @@ import {
   type AppConfig,
 } from './model/appConfig';
 import { parseTags, updateTags, type Tags } from './model/tags';
+import { findCategory, freeCategory, labelPatch, sprintLabelName, type Categories } from './model/sprintLabel';
 import { STATUS_PERCENT, toTask, type Status, type Task } from './model/task';
 
 interface State {
@@ -17,6 +18,8 @@ interface State {
   config: AppConfig;
   configTaskId: string | null;
   users: Record<string, GraphUser>;
+  /** Nomes dos rótulos do plano (category1..category25). */
+  categories: Categories;
   loading: boolean;
   error: string | null;
 }
@@ -71,6 +74,7 @@ const initial: State = {
   config: emptyConfig(),
   configTaskId: null,
   users: {},
+  categories: {},
   loading: false,
   error: null,
 };
@@ -91,6 +95,12 @@ export function StoreProvider({ api, me, children }: { api: PlannerApi; me: Grap
   const [state, setState] = useState<State>(initial);
   const tasksRef = useRef(state.tasks);
   tasksRef.current = state.tasks;
+  const categoriesRef = useRef(state.categories);
+  categoriesRef.current = state.categories;
+  const planIdRef = useRef(state.plan?.id);
+  planIdRef.current = state.plan?.id;
+  // Uma criação de rótulo por sprint, mesmo com várias tarefas movidas ao mesmo tempo.
+  const labelKeys = useRef(new Map<number, Promise<string>>());
 
   const fail = useCallback((e: unknown) => {
     setState((s) => ({ ...s, loading: false, error: e instanceof Error ? e.message : String(e) }));
@@ -100,7 +110,11 @@ export function StoreProvider({ api, me, children }: { api: PlannerApi; me: Grap
     async (plan: PlannerPlan) => {
       setState((s) => ({ ...s, plan, loading: true, error: null }));
       try {
-        const [buckets, raw] = await Promise.all([api.listBuckets(plan.id), api.listTasks(plan.id)]);
+        const [buckets, raw, planDetails] = await Promise.all([
+          api.listBuckets(plan.id),
+          api.listTasks(plan.id),
+          api.getPlanDetails(plan.id),
+        ]);
         let cfgRaw = raw.find((t) => t.title === CONFIG_TASK_TITLE);
         let config = cfgRaw ? parseConfig(cfgRaw.details.description) : emptyConfig();
         if (!cfgRaw) {
@@ -123,7 +137,18 @@ export function StoreProvider({ api, me, children }: { api: PlannerApi; me: Grap
         } catch {
           /* ignora */
         }
-        setState({ plan, buckets, tasks, config, configTaskId: cfgRaw.id, users, loading: false, error: null });
+        labelKeys.current.clear();
+        setState({
+          plan,
+          buckets,
+          tasks,
+          config,
+          configTaskId: cfgRaw.id,
+          users,
+          categories: planDetails.categoryDescriptions,
+          loading: false,
+          error: null,
+        });
       } catch (e) {
         fail(e);
       }
@@ -131,8 +156,12 @@ export function StoreProvider({ api, me, children }: { api: PlannerApi; me: Grap
     [api, me.id, fail],
   );
 
-  const replaceTask = (task: Task) =>
+  // Atualiza também a referência na hora: gravações seguidas (descrição, depois rótulo)
+  // precisam ver a versão mais nova da tarefa antes do próximo render.
+  const replaceTask = (task: Task) => {
+    tasksRef.current = tasksRef.current.map((t) => (t.id === task.id ? task : t));
     setState((s) => ({ ...s, tasks: s.tasks.map((t) => (t.id === task.id ? task : t)) }));
+  };
 
   const reloadTask = useCallback(
     async (taskId: string) => {
@@ -153,10 +182,8 @@ export function StoreProvider({ api, me, children }: { api: PlannerApi; me: Grap
         const next = fn(current.description);
         const details =
           next === current.description ? current : await api.updateDescription(taskId, current.etag, next);
-        setState((s) => ({
-          ...s,
-          tasks: s.tasks.map((t) => (t.id === taskId ? toTask({ ...rawOf(t), details }) : t)),
-        }));
+        const base = tasksRef.current.find((t) => t.id === taskId);
+        if (base) replaceTask(toTask({ ...rawOf(base), details }));
       });
     },
     [api],
@@ -171,16 +198,88 @@ export function StoreProvider({ api, me, children }: { api: PlannerApi; me: Grap
     [writeDescription, fail],
   );
 
-  const setTags = useCallback((taskId: string, patch: Partial<Tags>) => mutateTags(taskId, () => patch), [mutateTags]);
+  /** Rótulo "SPRINT-N" do plano; cria num rótulo livre se ainda não existir. */
+  const ensureSprintLabel = useCallback(
+    (sprintId: number): Promise<string> => {
+      const name = sprintLabelName(sprintId);
+      const known = findCategory(categoriesRef.current, name);
+      if (known) return Promise.resolve(known);
+      const cached = labelKeys.current.get(sprintId);
+      if (cached) return cached;
+      const planId = planIdRef.current!;
+      const promise = withRetry(async () => {
+        const d = await api.getPlanDetails(planId);
+        let names = d.categoryDescriptions;
+        let key = findCategory(names, name);
+        if (!key) {
+          key = freeCategory(names);
+          if (!key) {
+            throw new Error(
+              `O plano já usa os 25 rótulos, então não deu para criar o ${name}. Apague no Planner um rótulo de sprint antiga e tente de novo.`,
+            );
+          }
+          names = (await api.updateCategories(planId, d.etag, { [key]: name })).categoryDescriptions;
+        }
+        categoriesRef.current = names;
+        setState((s) => ({ ...s, categories: names }));
+        return key;
+      });
+      labelKeys.current.set(sprintId, promise);
+      promise.catch(() => labelKeys.current.delete(sprintId));
+      return promise;
+    },
+    [api],
+  );
+
+  /** Deixa a tarefa só com o rótulo da sprint dela (ou sem rótulo de sprint, no backlog). */
+  const syncSprintLabel = useCallback(
+    async (taskId: string, sprintId: number | undefined) => {
+      const target = sprintId === undefined ? undefined : await ensureSprintLabel(sprintId);
+      await withRetry(async () => {
+        const task = tasksRef.current.find((t) => t.id === taskId);
+        if (!task) return;
+        const patch = labelPatch(task.categories, categoriesRef.current, target);
+        if (!Object.keys(patch).length) return;
+        try {
+          const raw = await api.updateTask(taskId, task.etag, { appliedCategories: patch });
+          replaceTask(toTask({ ...raw, details: { description: task.description, etag: task.detailsEtag } }));
+        } catch (e) {
+          if (e instanceof ConflictError) {
+            // Alguém mexeu na tarefa: pega a versão atual antes de tentar de novo.
+            const fresh = toTask({
+              ...(await api.getTask(taskId)),
+              details: { description: task.description, etag: task.detailsEtag },
+            });
+            replaceTask(fresh);
+          }
+          throw e;
+        }
+      });
+    },
+    [api, ensureSprintLabel],
+  );
+
+  const setTags = useCallback(
+    async (taskId: string, patch: Partial<Tags>) => {
+      await mutateTags(taskId, () => patch);
+      if ('sprint' in patch) await syncSprintLabel(taskId, patch.sprint).catch(fail);
+    },
+    [mutateTags, syncSprintLabel, fail],
+  );
 
   const setTagsMany = useCallback(
     async (taskIds: string[], patch: Partial<Tags>) => {
       // Poucas por vez, para não esbarrar no limite de requisições da Graph.
       for (let i = 0; i < taskIds.length; i += 4) {
-        await Promise.all(taskIds.slice(i, i + 4).map((id) => writeDescription(id, (d) => updateTags(d, patch))));
+        await Promise.all(
+          taskIds.slice(i, i + 4).map(async (id) => {
+            await writeDescription(id, (d) => updateTags(d, patch));
+            if ('sprint' in patch) await syncSprintLabel(id, patch.sprint).catch(fail);
+          }),
+        );
       }
     },
-    [writeDescription],
+    [writeDescription, syncSprintLabel, fail],
   );
 
   const patchTask = useCallback(
@@ -298,6 +397,7 @@ function rawOf(t: Task) {
     dueDateTime: t.dueAt,
     orderHint: t.orderHint,
     assignments: Object.fromEntries(t.assignees.map((a) => [a, {}])),
+    appliedCategories: Object.fromEntries(t.categories.map((c) => [c, true])),
     '@odata.etag': t.etag,
   };
 }

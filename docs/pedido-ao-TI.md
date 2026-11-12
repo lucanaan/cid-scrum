@@ -52,7 +52,7 @@ Nenhum dos dois é segredo. Eles ficam na configuração pública da página.
 
 - O app age **somente em nome do usuário logado** (permissões delegadas). Ele não acessa nada que a pessoa já não acesse no Planner.
 - Não existe backend: as chamadas vão direto do navegador para `graph.microsoft.com`.
-- O app só altera a **descrição** das tarefas (acrescenta marcações como `[pts:5] [sprint:12]` na primeira linha), o **progresso**, os **responsáveis** das tarefas e cria uma tarefa de configuração ("⚙ Config Sprints") em cada plano usado.
+- O app só altera a **descrição** das tarefas (acrescenta marcações como `[pts:5] [sprint:12]` na primeira linha), o **progresso**, os **responsáveis** e os **rótulos** das tarefas (rótulos `SPRINT-1`, `SPRINT-2`…), e cria uma tarefa de configuração ("⚙ Config Sprints") em cada plano usado.
 - Se precisarem desativar o acesso, basta desabilitar ou excluir o registro do aplicativo.
 
 Se for preciso restringir quem pode usar o app, dá para ativar **"Atribuição necessária"** no aplicativo empresarial correspondente e incluir só os membros da minha equipe.

@@ -7,6 +7,8 @@ export interface Task {
   title: string;
   bucketId: string;
   assignees: string[];
+  /** Rótulos aplicados (category1..category25). */
+  categories: string[];
   percentComplete: number;
   createdAt: string;
   completedAt: string | null;
@@ -27,6 +29,9 @@ export function toTask(raw: TaskWithDetails): Task {
     title: raw.title,
     bucketId: raw.bucketId,
     assignees: Object.keys(raw.assignments ?? {}),
+    categories: Object.entries(raw.appliedCategories ?? {})
+      .filter(([, on]) => on)
+      .map(([k]) => k),
     percentComplete: raw.percentComplete,
     createdAt: raw.createdDateTime,
     completedAt: raw.percentComplete === 100 ? raw.completedDateTime ?? raw.createdDateTime : null,

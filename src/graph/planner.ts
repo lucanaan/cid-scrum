@@ -8,6 +8,7 @@ import {
   type PlannerTask,
   type TaskDetails,
   type TaskPatch,
+  type PlanDetails,
   type TaskWithDetails,
 } from './types';
 
@@ -122,6 +123,28 @@ export class GraphPlannerApi implements PlannerApi {
       // Sem detalhes (falha no lote) a tarefa entra sem etag; gravações vão buscar de novo.
       return { ...t, details: body ? toDetails(body) : { description: '', etag: '' } };
     });
+  }
+
+  getTask(taskId: string): Promise<PlannerTask> {
+    return getJson(`/planner/tasks/${taskId}`);
+  }
+
+  async getPlanDetails(planId: string): Promise<PlanDetails> {
+    const body = await getJson<{ categoryDescriptions?: Record<string, string | null>; '@odata.etag': string }>(
+      `/planner/plans/${encodeURIComponent(planId)}/details`,
+    );
+    return { categoryDescriptions: body.categoryDescriptions ?? {}, etag: body['@odata.etag'] };
+  }
+
+  async updateCategories(planId: string, etag: string, names: Record<string, string>): Promise<PlanDetails> {
+    const res = await graphFetch(`/planner/plans/${encodeURIComponent(planId)}/details`, {
+      method: 'PATCH',
+      headers: { 'If-Match': etag, Prefer: 'return=representation' },
+      body: JSON.stringify({ categoryDescriptions: names }),
+    });
+    if (res.status === 204) return this.getPlanDetails(planId);
+    const body = await res.json();
+    return { categoryDescriptions: body.categoryDescriptions ?? {}, etag: body['@odata.etag'] };
   }
 
   async getDetails(taskId: string): Promise<TaskDetails> {
