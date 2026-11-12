@@ -2,7 +2,7 @@
 // antes de o TI criar o registro no Entra.
 import { CONFIG_TASK_TITLE, emptyConfig, serializeConfig, type Sprint } from '../model/appConfig';
 import { dateKey } from '../model/metrics';
-import { parseTags, POKER_VALUES, updateTags, writeTags } from '../model/tags';
+import { parseTags, updateTags, writeTags } from '../model/tags';
 import {
   ConflictError,
   type GraphUser,
@@ -259,7 +259,6 @@ export class MockPlannerApi implements PlannerApi {
 
   async getDetails(taskId: string) {
     await delay();
-    this.simulateVotes(taskId);
     return { ...this.store.details[taskId] };
   }
 
@@ -313,20 +312,5 @@ export class MockPlannerApi implements PlannerApi {
   async getUsers(ids: string[]) {
     await delay();
     return ids.map((id) => USERS.find((u) => u.id === id) ?? { id, displayName: id });
-  }
-
-  /** No demo, os colegas "votam" sozinhos alguns segundos depois de a votação abrir. */
-  private simulateVotes(taskId: string) {
-    const d = this.store.details[taskId];
-    const poker = parseTags(d.description).tags.poker;
-    if (!poker || poker.revealed) return;
-    const missing = USERS.slice(1).filter((u) => !poker.votes[u.id]);
-    if (!missing.length || Math.random() < 0.5) return;
-    const base = 2 + Math.floor(Math.random() * 3); // índice em POKER_VALUES: 3, 5 ou 8
-    const idx = Math.max(0, Math.min(6, base + Math.round((Math.random() - 0.5) * 2)));
-    poker.votes[missing[0].id] = POKER_VALUES[idx];
-    d.description = updateTags(d.description, { poker });
-    d.etag = this.etag();
-    this.save();
   }
 }

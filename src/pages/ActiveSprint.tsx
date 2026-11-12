@@ -6,6 +6,7 @@ import type { Sprint } from '../model/appConfig';
 import { burndown, computeResult, dateKey, sprintTasks, sumPoints } from '../model/metrics';
 import { statusOf, STATUS_LABEL, type Status, type Task } from '../model/task';
 import { useStore } from '../store';
+import { CompleteSprintDialog } from '../components/SprintDialogs';
 
 export function ActiveSprint() {
   const { config } = useStore();
@@ -13,7 +14,7 @@ export function ActiveSprint() {
   if (!sprint) {
     return (
       <div className="card empty-state">
-        Nenhuma sprint ativa. Planeje uma e clique em “Iniciar sprint” na aba Planejamento.
+        Nenhuma sprint ativa. Monte a próxima sprint na aba Backlog e clique em “Iniciar sprint”.
       </div>
     );
   }
@@ -39,10 +40,10 @@ function SprintView({ sprint }: { sprint: Sprint }) {
         <h2 className="grow">
           {sprint.name} <span className="faint">· {formatRange(sprint.start, sprint.end)}</span>
         </h2>
-        <button onClick={() => setClosing(true)}>Encerrar sprint…</button>
+        <button onClick={() => setClosing(true)}>Concluir sprint</button>
       </div>
       {sprint.goal && <p className="muted" style={{ margin: 0 }}>Meta: {sprint.goal}</p>}
-      {closing && <CloseSprint sprint={sprint} onCancel={() => setClosing(false)} />}
+      {closing && <CompleteSprintDialog sprint={sprint} onClose={() => setClosing(false)} />}
 
       <div className="stats">
         <Stat label="Entregue" value={`${result.delivered} / ${bd.scope}`} sub={`${result.completedTasks} de ${result.totalTasks} tarefas`} />
@@ -168,64 +169,4 @@ function BurndownChart({ days, ideal, remaining }: { days: string[]; ideal: numb
     };
   }, [days, ideal, remaining]);
   return <Chart build={build} label="Burndown: pontos restantes por dia comparados com a linha ideal" />;
-}
-
-function CloseSprint({ sprint, onCancel }: { sprint: Sprint; onCancel: () => void }) {
-  const { tasks, config, updateConfig, setTagsMany } = useStore();
-  const next = config.sprints
-    .filter((s) => s.status === 'planned')
-    .sort((a, b) => a.start.localeCompare(b.start))[0];
-  const [dest, setDest] = useState<'backlog' | 'next'>(next ? 'next' : 'backlog');
-  const [busy, setBusy] = useState(false);
-  const unfinished = sprintTasks(tasks, sprint.id).filter((t) => !t.completedAt);
-
-  const close = async () => {
-    setBusy(true);
-    try {
-      // O resultado é gravado antes de mover as tarefas, para o histórico não mudar depois.
-      const result = computeResult(tasks, sprint);
-      await updateConfig((c) => ({
-        ...c,
-        sprints: c.sprints.map((s) => (s.id === sprint.id ? { ...s, status: 'closed', result } : s)),
-      }));
-      await setTagsMany(
-        unfinished.map((t) => t.id),
-        { sprint: dest === 'next' && next ? next.id : undefined },
-      );
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return (
-    <section className="card stack">
-      <h2>Encerrar {sprint.name}</h2>
-      <p className="muted" style={{ margin: 0 }}>
-        O resultado (comprometido, entregue e pontos por pessoa) fica gravado no histórico de produtividade.
-      </p>
-      {unfinished.length > 0 && (
-        <div className="stack">
-          <span>
-            {unfinished.length} tarefas não concluídas ({sumPoints(unfinished)} pts). Mover para:
-          </span>
-          <label className="row">
-            <input type="radio" checked={dest === 'next'} disabled={!next} onChange={() => setDest('next')} />
-            {next ? `Próxima sprint (${next.name})` : 'Próxima sprint (crie uma no Planejamento)'}
-          </label>
-          <label className="row">
-            <input type="radio" checked={dest === 'backlog'} onChange={() => setDest('backlog')} />
-            Backlog
-          </label>
-        </div>
-      )}
-      <div className="row">
-        <button className="primary" disabled={busy} onClick={close}>
-          {busy ? 'Encerrando…' : 'Encerrar sprint'}
-        </button>
-        <button className="ghost" disabled={busy} onClick={onCancel}>
-          Cancelar
-        </button>
-      </div>
-    </section>
-  );
 }
