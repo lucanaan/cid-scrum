@@ -1,16 +1,16 @@
 :root {
   color-scheme: light;
-  --bg: #f5f5f3;
-  --surface: #fcfcfb;
-  --surface-2: #f0efec;
-  --border: #e2e1dc;
+  --bg: #eef6fc;
+  --surface: #ffffff;
+  --surface-2: #f2f7fc;
+  --border: #dce7f2;
   --text: #0b0b0b;
   --text-2: #52514e;
   --text-3: #7a7973;
-  --accent: #2a78d6;
+  --accent: #1b4f8f;
   --accent-ink: #ffffff;
-  --accent-soft: #e3eefb;
-  --grid: #e8e7e2;
+  --accent-soft: #e2eefb;
+  --grid: #e6eef6;
   --series-1: #2a78d6;
   --series-2: #eb6834;
   --series-3: #1baf7a;
@@ -27,36 +27,7 @@
   --warning-ink: #8a5a00;
   --critical-ink: #b42323;
   --radius: 10px;
-  --shadow: 0 1px 2px rgb(0 0 0 / 0.06);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) {
-    color-scheme: dark;
-    --bg: #121211;
-    --surface: #1a1a19;
-    --surface-2: #242422;
-    --border: #33332f;
-    --text: #f0efec;
-    --text-2: #c3c2b7;
-    --text-3: #92918a;
-    --accent: #3987e5;
-    --accent-soft: #1d2d42;
-    --grid: #2c2c29;
-    --series-1: #3987e5;
-    --series-2: #d95926;
-    --series-3: #199e70;
-    --series-4: #c98500;
-    --series-5: #d55181;
-    --series-6: #008300;
-    --series-7: #9085e9;
-    --series-8: #e66767;
-    --neutral-mark: #6b6a64;
-    --good-ink: #4cc94c;
-    --warning-ink: #fab219;
-    --critical-ink: #ef7272;
-    --shadow: none;
-  }
+  --shadow: 0 1px 3px rgb(27 79 143 / 0.07);
 }
 
 * {
@@ -416,3 +387,27 @@ details summary { cursor: pointer; color: var(--text-2); }
 .sprint-chip { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
 .progress { width: 160px; height: 6px; border-radius: 999px; background: var(--surface); overflow: hidden; }
 .progress > span { display: block; height: 100%; background: var(--accent); transition: width 0.2s; }
+.planner-link {
+  display: inline-flex;
+  vertical-align: -2px;
+  padding: 2px;
+  border-radius: 4px;
+  color: var(--text-3);
+  flex: none;
+}
+.planner-link:hover { color: var(--accent); background: var(--accent-soft); }
+
+/* ---------- Identidade CID ---------- */
+.doodle { pointer-events: none; flex: none; }
+.backdrop { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; }
+.backdrop .doodle { position: absolute; }
+.brand { display: inline-flex; align-items: center; gap: 8px; font-weight: 700; color: var(--accent); white-space: nowrap; }
+.brand-sep { color: var(--text-3); }
+.header-deco { display: inline-flex; align-items: flex-end; gap: 2px; margin-right: 4px; }
+.entry-art { position: relative; display: flex; justify-content: center; padding: 8px 0 4px; }
+.entry-art .doodle { position: absolute; }
+.entry-art .doodle:first-child { position: static; }
+.empty-illustration { position: relative; width: 140px; height: 70px; margin: 4px auto 10px; }
+.empty-illustration .doodle { position: absolute; }
+.heading-deco { display: inline-flex; align-items: center; gap: 6px; }
+@media (max-width: 600px) { .header-deco { display: none; } }

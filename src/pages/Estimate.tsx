@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Assignees, Points } from '../components/ui';
+import { Assignees, Empty, PlannerLink, Points } from '../components/ui';
 import { POKER_VALUES } from '../model/tags';
 import type { Task } from '../model/task';
 import { useStore } from '../store';
@@ -53,10 +53,11 @@ export function Estimate() {
               onClick={() => setSelectedId(t.id)}
             >
               <span className="title">{t.title}</span>
+              <PlannerLink taskId={t.id} />
               <Assignees ids={t.assignees} />
             </div>
           ))}
-          {pending.length === 0 && <div className="empty-state">Tudo estimado. 🎉</div>}
+          {pending.length === 0 && <Empty>Tudo estimado. 🎉</Empty>}
         </div>
       </section>
 
@@ -65,7 +66,9 @@ export function Estimate() {
           <>
             <div>
               <div className="faint">Estimando</div>
-              <h2 style={{ marginTop: 4 }}>{selected.title}</h2>
+              <h2 style={{ marginTop: 4 }}>
+                {selected.title} <PlannerLink taskId={selected.id} />
+              </h2>
             </div>
             <div className="cards">
               {NUMERIC.map((n) => (

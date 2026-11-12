@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react';
+import { EmptyIllustration } from './Doodles';
 import { loadLevel } from '../model/metrics';
+import { plannerTaskUrl } from '../config';
 import { useStore } from '../store';
 
 /** Cor fixa por pessoa, seguindo a ordem da equipe (nunca pelo ranking). */
@@ -102,4 +104,35 @@ export function formatDate(key: string): string {
 
 export function formatRange(start: string, end: string): string {
   return `${formatDate(start)} – ${formatDate(end)}/${end.slice(0, 4)}`;
+}
+
+/** Ícone que abre a tarefa no Planner numa nova aba (não aparece no modo demonstração). */
+export function PlannerLink({ taskId }: { taskId: string }) {
+  const { plan, api } = useStore();
+  if (!plan || api.demo) return null;
+  return (
+    <a
+      className="planner-link"
+      href={plannerTaskUrl(plan.id, taskId)}
+      target="_blank"
+      rel="noopener noreferrer"
+      title="Abrir no Planner"
+      aria-label="Abrir no Planner"
+      onClick={(e) => e.stopPropagation()}
+    >
+      <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden>
+        <path d="M9 3h4v4M13 3L7.5 8.5M11 9.5V12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h2.5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    </a>
+  );
+}
+
+/** Estado vazio com a ilustração da CID. */
+export function Empty({ children }: { children: ReactNode }) {
+  return (
+    <div className="empty-state">
+      <EmptyIllustration />
+      {children}
+    </div>
+  );
 }

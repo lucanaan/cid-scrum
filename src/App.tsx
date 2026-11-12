@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { BarsCoaster, Blob, Burst, CID, Cloud, DashedCurve, Sparkle } from './components/Doodles';
 import { MockPlannerApi } from './graph/mock';
 import type { PlannerPlan } from './graph/types';
 import { isConfigured } from './config';
@@ -36,6 +37,7 @@ export function App() {
   if (!plan) return <PlanPicker />;
   return (
     <>
+      <Backdrop />
       <Header />
       <main>
         <DemoBanner />
@@ -64,6 +66,29 @@ export function App() {
   );
 }
 
+/** Manchas e curva tracejada atrás do conteúdo, como os morros do banner. */
+export function Backdrop() {
+  return (
+    <div className="backdrop" aria-hidden>
+      <Blob size={520} style={{ left: -160, bottom: -120 }} />
+      <Blob size={300} color={CID.cream} style={{ left: 120, bottom: -150, opacity: 0.8 }} />
+      <Blob size={420} style={{ right: -170, top: 140, opacity: 0.7 }} />
+      <DashedCurve size={280} style={{ right: 24, bottom: 18 }} />
+    </div>
+  );
+}
+
+/** Ilustração do topo das telas de entrada. */
+export function EntryArt() {
+  return (
+    <div className="entry-art" aria-hidden>
+      <BarsCoaster size={170} />
+      <Cloud size={70} style={{ left: 0, top: 6 }} />
+      <Sparkle size={26} style={{ right: 18, top: 14 }} />
+    </div>
+  );
+}
+
 function CurrentTab() {
   const [tab] = useHashTab();
   const { Page } = TABS.find((t) => t.id === tab)!;
@@ -71,16 +96,22 @@ function CurrentTab() {
 }
 
 function Header() {
-  const { plan, me, api, refresh, closePlan, loading } = useStore();
+  const { plan, me, api, refresh, loading } = useStore();
   const [tab, setTab] = useHashTab();
   return (
     <header className="app-header">
       <div className="header-row">
+        <span className="brand">
+          <BarsCoaster size={40} />
+          CID Scrum
+        </span>
+        <span className="brand-sep">·</span>
         <span className="plan-title">{plan?.title}</span>
-        <button className="small ghost" onClick={closePlan} title="Trocar de plano">
-          Trocar
-        </button>
         <span className="spacer" />
+        <span className="header-deco" aria-hidden>
+          <Cloud size={56} />
+          <Burst size={22} />
+        </span>
         <button className="small" onClick={refresh} disabled={loading} title="Recarregar dados do Planner">
           ↻ Atualizar
         </button>
@@ -167,7 +198,9 @@ function PlanPicker() {
 
   return (
     <div className="center-page">
+      <Backdrop />
       <section className="card stack" style={{ gap: 14 }}>
+        <EntryArt />
         <h1>Escolha o plano do Planner</h1>
         {(error || msg) && <div className="error">{error ?? msg}</div>}
         {plans === null ? (

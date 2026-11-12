@@ -10,6 +10,10 @@ Complemento ao **Microsoft Planner Basic** para a equipe:
 
 Tudo fica gravado no próprio Planner: não há servidor nem banco de dados.
 
+- App: https://lucanaan.github.io/cid-scrum/
+- Demonstração (dados fictícios, sem login): https://lucanaan.github.io/cid-scrum/?demo=1
+- Pode ser embutido em outra página (iframe): nesse caso o login abre numa janela popup.
+
 | O quê | Onde fica |
 |---|---|
 | Pontos e sprint da tarefa | Primeira linha da descrição: `[pts:5] [sprint:12]` |

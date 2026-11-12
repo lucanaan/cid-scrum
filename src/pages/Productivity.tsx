@@ -1,7 +1,8 @@
 import { useCallback, useMemo } from 'react';
 import type { ChartConfiguration } from 'chart.js';
 import { baseOptions, Chart, cssVar } from '../components/Chart';
-import { Stat, usePersonColor } from '../components/ui';
+import { Burst } from '../components/Doodles';
+import { Empty, Stat, usePersonColor } from '../components/ui';
 import { resultOf, round1, velocity } from '../model/metrics';
 import { useStore } from '../store';
 
@@ -81,7 +82,11 @@ export function Productivity() {
   }, [rows, people, allMemberIds, userName]);
 
   if (!rows.length) {
-    return <div className="card empty-state">As métricas aparecem depois que a primeira sprint for iniciada.</div>;
+    return (
+      <div className="card">
+        <Empty>As métricas aparecem depois que a primeira sprint for iniciada.</Empty>
+      </div>
+    );
   }
 
   return (
@@ -103,7 +108,9 @@ export function Productivity() {
       </div>
 
       <section className="card">
-        <h2>Comprometido × entregue</h2>
+        <h2 className="heading-deco">
+          Comprometido × entregue <Burst size={20} />
+        </h2>
         <div className="legend" style={{ margin: '8px 0' }}>
           <span><i style={{ background: 'var(--neutral-mark)' }} />Comprometido</span>
           <span><i style={{ background: 'var(--series-1)' }} />Entregue</span>

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Assignees, Stat } from '../components/ui';
+import { Assignees, PlannerLink, Stat } from '../components/ui';
 import { sumPoints } from '../model/metrics';
 import { POKER_VALUES } from '../model/tags';
 import { statusOf, STATUS_LABEL, type Task } from '../model/task';
@@ -123,7 +123,9 @@ export function Backlog() {
             <tbody>
               {filtered.map((t) => (
                 <tr key={t.id}>
-                  <td style={{ overflowWrap: 'anywhere' }}>{t.title}</td>
+                  <td style={{ overflowWrap: 'anywhere' }}>
+                    {t.title} <PlannerLink taskId={t.id} />
+                  </td>
                   <td>
                     <span className="chip">{bucketName(t.bucketId)}</span>
                   </td>

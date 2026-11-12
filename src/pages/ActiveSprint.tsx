@@ -1,7 +1,8 @@
 import { useCallback, useMemo, useState } from 'react';
 import type { ChartConfiguration } from 'chart.js';
 import { baseOptions, Chart, cssVar } from '../components/Chart';
-import { Assignees, Points, Stat, formatDate, formatRange } from '../components/ui';
+import { Sparkle } from '../components/Doodles';
+import { Assignees, Empty, PlannerLink, Points, Stat, formatDate, formatRange } from '../components/ui';
 import type { Sprint } from '../model/appConfig';
 import { burndown, computeResult, dateKey, sprintTasks, sumPoints } from '../model/metrics';
 import { statusOf, STATUS_LABEL, type Status, type Task } from '../model/task';
@@ -13,8 +14,8 @@ export function ActiveSprint() {
   const sprint = config.sprints.find((s) => s.status === 'active');
   if (!sprint) {
     return (
-      <div className="card empty-state">
-        Nenhuma sprint ativa. Monte a próxima sprint na aba Backlog e clique em “Iniciar sprint”.
+      <div className="card">
+        <Empty>Nenhuma sprint ativa. Monte a próxima sprint na aba Planejamento e clique em “Iniciar sprint”.</Empty>
       </div>
     );
   }
@@ -66,7 +67,9 @@ function SprintView({ sprint }: { sprint: Sprint }) {
       </div>
 
       <section className="card">
-        <h2>Burndown</h2>
+        <h2 className="heading-deco">
+          Burndown <Sparkle size={18} />
+        </h2>
         <div className="legend" style={{ margin: '8px 0' }}>
           <span><i className="line" style={{ background: 'var(--series-1)' }} />Pontos restantes</span>
           <span><i className="dash" />Ideal</span>
@@ -112,7 +115,9 @@ function TaskCard({ task }: { task: Task }) {
   const next = COLUMNS[COLUMNS.indexOf(status) + 1];
   return (
     <div className="task-card" style={{ opacity: busy ? 0.6 : 1 }}>
-      <div style={{ overflowWrap: 'anywhere' }}>{task.title}</div>
+      <div style={{ overflowWrap: 'anywhere' }}>
+        {task.title} <PlannerLink taskId={task.id} />
+      </div>
       <div className="row">
         <Points value={task.points} />
         <Assignees ids={task.assignees} />

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { Chart as ChartJS, registerables, type ChartConfiguration } from 'chart.js';
 
 ChartJS.register(...registerables);
@@ -36,27 +36,15 @@ export function baseOptions(): ChartConfiguration['options'] {
   };
 }
 
-function useDarkMode(): boolean {
-  const [dark, setDark] = useState(() => matchMedia('(prefers-color-scheme: dark)').matches);
-  useEffect(() => {
-    const mq = matchMedia('(prefers-color-scheme: dark)');
-    const onChange = () => setDark(mq.matches);
-    mq.addEventListener('change', onChange);
-    return () => mq.removeEventListener('change', onChange);
-  }, []);
-  return dark;
-}
-
-/** `build` é chamado de novo quando os dados ou o tema mudam, para reler as cores. */
+/** `build` é chamado de novo quando os dados mudam. */
 export function Chart({ build, label }: { build: () => ChartConfiguration; label: string }) {
   const canvas = useRef<HTMLCanvasElement>(null);
-  const dark = useDarkMode();
 
   useEffect(() => {
     if (!canvas.current) return;
     const chart = new ChartJS(canvas.current, build());
     return () => chart.destroy();
-  }, [build, dark]);
+  }, [build]);
 
   return (
     <div className="chart-box">

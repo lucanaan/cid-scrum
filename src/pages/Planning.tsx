@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Assignees, LoadBar, Points, Stat, formatRange } from '../components/ui';
+import { Assignees, Empty, LoadBar, PlannerLink, Points, Stat, formatRange } from '../components/ui';
 import { nextSprintId, type Sprint } from '../model/appConfig';
 import {
   businessDays,
@@ -53,7 +53,11 @@ export function Planning() {
       {sprint ? (
         <SprintPlan sprint={sprint} />
       ) : (
-        !creating && <div className="card empty-state">Crie a primeira sprint para começar o planejamento.</div>
+        !creating && (
+          <div className="card">
+            <Empty>Crie a primeira sprint para começar o planejamento.</Empty>
+          </div>
+        )
       )}
     </>
   );
@@ -230,7 +234,7 @@ function SprintPlan({ sprint }: { sprint: Sprint }) {
                 onAction={() => withBusy(t.id, () => setTags(t.id, { sprint: sprint.id }))}
               />
             ))}
-            {candidates.length === 0 && <div className="empty-state">Backlog vazio.</div>}
+            {candidates.length === 0 && <Empty>Backlog vazio.</Empty>}
           </div>
         </section>
 
@@ -249,7 +253,7 @@ function SprintPlan({ sprint }: { sprint: Sprint }) {
                 assign={(uid) => withBusy(t.id, () => setAssignee(t.id, uid))}
               />
             ))}
-            {inSprint.length === 0 && <div className="empty-state">Adicione tarefas do backlog.</div>}
+            {inSprint.length === 0 && <Empty>Adicione tarefas do backlog.</Empty>}
           </div>
         </section>
       </div>
@@ -275,6 +279,7 @@ function TaskRow({
     <div className="task-item" style={{ opacity: busy ? 0.6 : 1 }}>
       <Points value={task.points} />
       <span className="title">{task.title}</span>
+      <PlannerLink taskId={task.id} />
       {assign ? (
         <select
           aria-label="Responsável"
