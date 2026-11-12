@@ -1,9 +1,9 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
-// No GitHub Pages o site fica em /<repo>/; VITE_BASE é definido no workflow de deploy.
+// Caminhos relativos: o mesmo build funciona em qualquer subpasta (GitHub Pages, GitLab Pages…).
 export default defineConfig({
-  base: process.env.VITE_BASE ?? '/',
+  base: './',
   plugins: [react()],
   server: { port: 5173, strictPort: true },
 });

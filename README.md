@@ -35,6 +35,14 @@ O registro no Entra ID foi criado pela DTI (veja [`docs/pedido-ao-TI.md`](docs/p
 2. Em **Settings → Pages → Build and deployment**, escolha **GitHub Actions**.
 3. Cada push na `main` publica o app em `https://lucanaan.github.io/cid-scrum/`. Essa URL precisa estar no registro do Entra (está no pedido à DTI).
 
+## Publicar no GitLab Pages
+
+1. No GitLab: **New project → Import project → Repository by URL** com `https://github.com/lucanaan/cid-scrum.git`.
+2. O arquivo `.gitlab-ci.yml` já publica o app a cada push na branch padrão. O endereço aparece em **Deploy → Pages**.
+3. Cadastre esse endereço no registro do Entra (Autenticação → Aplicativo de página única).
+
+O build usa caminhos relativos, então o mesmo código funciona em qualquer endereço.
+
 ## Desenvolvimento
 
 ```bash

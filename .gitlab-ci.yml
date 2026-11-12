@@ -1,0 +1,14 @@
+# Publica o app no GitLab Pages a cada push na branch padrão.
+pages:
+  image: node:22
+  stage: deploy
+  script:
+    - npm ci
+    - npm test
+    - npm run build
+    - rm -rf public && mv dist public
+  artifacts:
+    paths:
+      - public
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
