@@ -4,6 +4,9 @@ import {
   burndown,
   businessDays,
   computeResult,
+  dateKey,
+  dueForSprintEnd,
+  sameDay,
   loadLevel,
   memberCapacity,
   pointsByPerson,
@@ -62,7 +65,7 @@ describe('métricas', () => {
 
   it('calcula resultado e velocidade', () => {
     const tasks = [
-      task({ points: 5, sprint: 1, assignees: ['ana'], completedAt: '2026-11-05T15:00:00Z', percentComplete: 100 }),
+      task({ points: 5, sprint: 1, assignees: ['ana'], completedAt: '2026-11-05T12:00:00', percentComplete: 100 }),
       task({ points: 3, sprint: 1, assignees: ['bob'] }),
       task({ points: 8, sprint: 2 }),
     ];
@@ -82,7 +85,7 @@ describe('métricas', () => {
 
   it('gera burndown com linha ideal só nos dias úteis', () => {
     const tasks = [
-      task({ points: 4, sprint: 1, completedAt: '2026-11-03T15:00:00Z', percentComplete: 100 }),
+      task({ points: 4, sprint: 1, completedAt: '2026-11-03T12:00:00', percentComplete: 100 }),
       task({ points: 6, sprint: 1 }),
     ];
     const b = burndown(tasks, sprint, '2026-11-04');
@@ -99,5 +102,13 @@ describe('métricas', () => {
     expect(loadLevel(9, 10)).toBe('warn');
     expect(loadLevel(11, 10)).toBe('over');
     expect(loadLevel(0, 0)).toBe('none');
+  });
+
+  it('data de conclusão cai no último dia da sprint', () => {
+    const iso = dueForSprintEnd('2026-11-15');
+    expect(dateKey(iso)).toBe('2026-11-15');
+    expect(sameDay(iso, '2026-11-15')).toBe(true);
+    expect(sameDay(iso, '2026-11-16')).toBe(false);
+    expect(sameDay(null, '2026-11-15')).toBe(false);
   });
 });

@@ -294,6 +294,7 @@ export class MockPlannerApi implements PlannerApi {
       t.percentComplete = patch.percentComplete;
       t.completedDateTime = patch.percentComplete === 100 ? new Date().toISOString() : null;
     }
+    if (patch.dueDateTime !== undefined) t.dueDateTime = patch.dueDateTime;
     for (const [id, a] of Object.entries(patch.assignments ?? {})) {
       if (a) t.assignments = { ...t.assignments, [id]: a };
       else t.assignments = Object.fromEntries(Object.entries(t.assignments).filter(([k]) => k !== id));

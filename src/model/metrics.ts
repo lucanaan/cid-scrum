@@ -140,3 +140,15 @@ export function loadLevel(points: number, capacity: number): LoadLevel {
 export function round1(n: number): number {
   return Math.round(n * 10) / 10;
 }
+
+/** dueDateTime para o Planner: meio-dia local da data, para aparecer no dia certo em qualquer fuso. */
+export function dueForSprintEnd(end: string): string {
+  const d = parseDay(end);
+  d.setHours(12);
+  return d.toISOString();
+}
+
+/** A data/hora ISO cai no dia `key` (AAAA-MM-DD, horário local)? */
+export function sameDay(iso: string | null | undefined, key: string): boolean {
+  return !!iso && dateKey(iso) === key;
+}

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Assignees, Empty, LoadBar, PlannerLink, Points, Stat, formatRange } from '../components/ui';
+import { Assignees, Empty, LoadBar, PlannerLink, Points, Stat, formatDate, formatRange } from '../components/ui';
 import { nextSprintId, type Sprint } from '../model/appConfig';
 import {
   businessDays,
@@ -120,7 +120,7 @@ function NewSprint({ onDone }: { onDone: (id?: number) => void }) {
 }
 
 function SprintPlan({ sprint }: { sprint: Sprint }) {
-  const { tasks, config, memberIds, userName, setTags, setTagsMany, setAssignee } = useStore();
+  const { tasks, config, memberIds, userName, moveToSprint, setAssignee } = useStore();
   const [query, setQuery] = useState('');
   const [busyIds, setBusyIds] = useState<Set<string>>(new Set());
 
@@ -160,9 +160,9 @@ function SprintPlan({ sprint }: { sprint: Sprint }) {
   const addDoing = async () => {
     setAddingDoing(true);
     try {
-      await setTagsMany(
+      await moveToSprint(
         doing.map((t) => t.id),
-        { sprint: sprint.id },
+        sprint,
       );
     } finally {
       setAddingDoing(false);
@@ -254,7 +254,7 @@ function SprintPlan({ sprint }: { sprint: Sprint }) {
                 task={t}
                 busy={busyIds.has(t.id)}
                 action="Adicionar →"
-                onAction={() => withBusy(t.id, () => setTags(t.id, { sprint: sprint.id }))}
+                onAction={() => withBusy(t.id, () => moveToSprint([t.id], sprint))}
               />
             ))}
             {candidates.length === 0 && <Empty>Backlog vazio.</Empty>}
@@ -265,6 +265,9 @@ function SprintPlan({ sprint }: { sprint: Sprint }) {
           <h2 style={{ marginBottom: 10 }}>
             Na sprint ({inSprint.length}) · {total} pts
           </h2>
+          <p className="faint" style={{ marginTop: -4 }}>
+            Ao entrar na sprint, a data de conclusão da tarefa no Planner vira {formatDate(sprint.end)} (fim da sprint).
+          </p>
           <div className="task-list scroll">
             {inSprint.map((t) => (
               <TaskRow
@@ -272,7 +275,7 @@ function SprintPlan({ sprint }: { sprint: Sprint }) {
                 task={t}
                 busy={busyIds.has(t.id)}
                 action="← Remover"
-                onAction={() => withBusy(t.id, () => setTags(t.id, { sprint: undefined }))}
+                onAction={() => withBusy(t.id, () => moveToSprint([t.id], undefined))}
                 assign={(uid) => withBusy(t.id, () => setAssignee(t.id, uid))}
               />
             ))}

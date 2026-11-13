@@ -6,9 +6,11 @@ import {
   parseConfig,
   serializeConfig,
   type AppConfig,
+  type Sprint,
 } from './model/appConfig';
 import { parseTags, updateTags, type Tags } from './model/tags';
 import { tasksToLoad } from './model/loading';
+import { dueForSprintEnd, sameDay } from './model/metrics';
 import { STATUS_PERCENT, toTask, type Status, type Task } from './model/task';
 
 interface State {
@@ -38,6 +40,11 @@ interface Store extends State {
   /** Altera as tags a partir do valor atual no Planner (para não perder votos de outras pessoas). */
   mutateTags(taskId: string, fn: (current: Tags) => Partial<Tags>): Promise<void>;
   setTagsMany(taskIds: string[], patch: Partial<Tags>): Promise<void>;
+  /**
+   * Põe tarefas numa sprint (ou devolve ao backlog com `undefined`). Na sprint, a data de conclusão
+   * vira a data final dela; de volta ao backlog, a data é apagada se ainda for a da sprint antiga.
+   */
+  moveToSprint(taskIds: string[], target: Sprint | undefined): Promise<void>;
   setStatus(taskId: string, status: Status): Promise<void>;
   /** Troca os responsáveis da tarefa por uma única pessoa (ou nenhuma). */
   setAssignee(taskId: string, userId: string | null): Promise<void>;
@@ -95,6 +102,8 @@ export function StoreProvider({ api, me, children }: { api: PlannerApi; me: Grap
   const [state, setState] = useState<State>(initial);
   const tasksRef = useRef(state.tasks);
   tasksRef.current = state.tasks;
+  const configRef = useRef(state.config);
+  configRef.current = state.config;
   const planIdRef = useRef(state.plan?.id);
   planIdRef.current = state.plan?.id;
 
@@ -250,6 +259,28 @@ export function StoreProvider({ api, me, children }: { api: PlannerApi; me: Grap
     [api, fail],
   );
 
+  const moveToSprint = useCallback(
+    async (taskIds: string[], target: Sprint | undefined) => {
+      const move = async (id: string) => {
+        const before = tasksRef.current.find((t) => t.id === id);
+        const oldSprint = configRef.current.sprints.find((s) => s.id === before?.sprint);
+        await writeDescription(id, (d) => updateTags(d, { sprint: target?.id }));
+        if (target) {
+          await patchTask(id, { dueDateTime: dueForSprintEnd(target.end) });
+        } else if (oldSprint && sameDay(before?.dueAt, oldSprint.end)) {
+          await patchTask(id, { dueDateTime: null });
+        }
+      };
+      try {
+        for (let i = 0; i < taskIds.length; i += 4) await Promise.all(taskIds.slice(i, i + 4).map(move));
+      } catch (e) {
+        fail(e);
+        throw e;
+      }
+    },
+    [writeDescription, patchTask, fail],
+  );
+
   const setStatus = useCallback(
     (taskId: string, status: Status) => patchTask(taskId, { percentComplete: STATUS_PERCENT[status] }),
     [patchTask],
@@ -326,6 +357,7 @@ export function StoreProvider({ api, me, children }: { api: PlannerApi; me: Grap
       setTags,
       mutateTags,
       setTagsMany,
+      moveToSprint,
       setStatus,
       setAssignee,
       updateConfig,
@@ -334,7 +366,7 @@ export function StoreProvider({ api, me, children }: { api: PlannerApi; me: Grap
       userName: (id: string) => (id === '' ? 'Sem responsável' : state.users[id]?.displayName ?? 'Carregando…'),
       clearError: () => setState((s) => ({ ...s, error: null })),
     };
-  }, [state, api, me, load, setTags, mutateTags, setTagsMany, setStatus, setAssignee, updateConfig, reloadTask, reloadConfig]);
+  }, [state, api, me, load, setTags, mutateTags, setTagsMany, moveToSprint, setStatus, setAssignee, updateConfig, reloadTask, reloadConfig]);
 
   return <Ctx.Provider value={store}>{children}</Ctx.Provider>;
 }

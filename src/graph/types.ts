@@ -42,6 +42,8 @@ export interface TaskWithDetails extends PlannerTask {
 
 export interface TaskPatch {
   percentComplete?: number;
+  /** Data de conclusão; null apaga. */
+  dueDateTime?: string | null;
   /** userId -> atribuição (adicionar) ou null (remover). */
   assignments?: Record<string, { '@odata.type': string; orderHint: string } | null>;
 }

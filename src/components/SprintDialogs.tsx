@@ -147,7 +147,7 @@ export function StartSprintDialog({ sprint, onClose }: { sprint: Sprint; onClose
 }
 
 export function CompleteSprintDialog({ sprint, onClose }: { sprint: Sprint; onClose: () => void }) {
-  const { tasks, config, updateConfig, setTagsMany } = useStore();
+  const { tasks, config, updateConfig, moveToSprint } = useStore();
   const inSprint = sprintTasks(tasks, sprint.id);
   const done = inSprint.filter((t) => t.completedAt);
   const open = inSprint.filter((t) => !t.completedAt);
@@ -160,19 +160,19 @@ export function CompleteSprintDialog({ sprint, onClose }: { sprint: Sprint; onCl
     try {
       // O resultado é gravado antes de mover as tarefas, para o histórico não mudar depois.
       const result = computeResult(tasks, sprint);
-      let target: number | undefined = dest === 'backlog' ? undefined : Number(dest);
-      await updateConfig((c) => {
+      let targetId: number | undefined = dest === 'backlog' ? undefined : Number(dest);
+      const updated = await updateConfig((c) => {
         const sprints = c.sprints.map((s) => (s.id === sprint.id ? { ...s, status: 'closed' as const, result } : s));
         if (dest === 'new' && open.length) {
           const s = newSprint({ ...c, sprints });
-          target = s.id;
+          targetId = s.id;
           sprints.push(s);
         }
         return { ...c, sprints };
       });
-      await setTagsMany(
+      await moveToSprint(
         open.map((t) => t.id),
-        { sprint: target },
+        updated.sprints.find((s) => s.id === targetId),
       );
       onClose();
     } finally {
